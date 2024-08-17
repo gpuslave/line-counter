@@ -62,8 +62,8 @@ for dirpath, dirnames, filenames in os.walk(start_path):
                 # print(listline)
                 # if multiline comment started in this
 
-                line_accounted = False
                 if MULTI_LINE_COM_START in line:
+                    line_accounted = False
                     que_com = 1
                     start_split = line.split(MULTI_LINE_COM_START)
                     end_split = []
@@ -85,9 +85,9 @@ for dirpath, dirnames, filenames in os.walk(start_path):
                             if end_split[-1] and not line_accounted:
                                 linec += 1
                                 line_accounted = True
-                                break
+                            break
 
-                        line = file.readline()
+                        line = file.readline().strip()
                         line_accounted = False
 
                         # if start_split
@@ -96,6 +96,6 @@ for dirpath, dirnames, filenames in os.walk(start_path):
                         #     # if line.find('\"\"\"'):
                         #     #     pass
                         #     print(listline)
-                if not line_accounted:
+                else:
                     linec += 1
         print(linec)
