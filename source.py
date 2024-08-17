@@ -1,7 +1,25 @@
 import os
+import argparse
 
 COLOUR = os.getenv("COLOUR", 1)
 
+parser = argparse.ArgumentParser(
+    description="Count the number of strings in a project")
+
+parser.add_argument("--path", "-p",
+                    metavar="ABSOLUTE_PATH",
+                    type=str,
+                    help="Absolute path to a directory",
+                    default=".",)
+
+# parser.add_argument(
+#         "--count-comments", "-c",
+#         action="store_true",
+#         help="Count lines within multi-line comments"
+#     )
+
+args = parser.parse_args()
+print(args.path)
 
 # from colorama import Fore, Back, Style
 # print(Fore.RED + 'some red telinet')
@@ -32,6 +50,14 @@ MULTI_LINE_COM_START = r'/*'
 MULTI_LINE_COM_END = r'*/'
 
 
+class LineCounter:
+    def __init__(self) -> None:
+        pass
+
+    def count_lines() -> None:
+        pass
+
+
 def is_one_line_comment(line: str) -> bool:
     return line.startswith(ONE_LINE_COM)
 
@@ -39,8 +65,10 @@ def is_one_line_comment(line: str) -> bool:
 def is_informal_line(line: str) -> bool:
     return line and not is_one_line_comment(line)
 
+# LineCounter.count_lines()
 
-start_path = "."
+
+start_path = args.path
 for dirpath, dirnames, filenames in os.walk(start_path):
     if "\\.venv" in dirpath or "\\.git" in dirpath:
         continue
