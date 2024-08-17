@@ -1,5 +1,6 @@
 """ Example test
 """
+
 from curses import wrapper
 
 
@@ -19,6 +20,5 @@ def main(stdscr):
 wrapper(main)
 
 
-/* 1231231
-
+1231231 / *
 fdsfsd * /
