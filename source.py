@@ -1,5 +1,6 @@
 import os
 import argparse
+import pathlib
 from abc import ABC, abstractmethod
 
 COLOUR = os.getenv("COLOUR", 1)
@@ -25,7 +26,7 @@ COLOUR = os.getenv("COLOUR", 1)
 
 # print(bcolors.WARNING + "Warning: No active frommets remain. Continue?" + bcolors.ENDC)
 
-class FileLineCounter:
+class FileLineCounterStrategy(ABC):
     def __init__(self, one_line_com: str = "//", multi_line_com_start: str = r"/*", multi_line_com_end: str = r"*/") -> None:
         self.ONE_LINE_COM = one_line_com
         self.MULTI_LINE_COM_START = multi_line_com_start
@@ -37,8 +38,12 @@ class FileLineCounter:
     def is_informal_line(self, line: str) -> bool:
         return line and not self.is_one_line_comment(line)
 
+    @abstractmethod
+    def line_count(self, path: str) -> int:
+        pass
 
-class CStyleFileLineCounter(FileLineCounter):
+
+class CStyleFileLineCounter(FileLineCounterStrategy):
     def __init__(self) -> None:
         super().__init__(one_line_com="//", multi_line_com_start=r"/*", multi_line_com_end=r"*/")
 
@@ -79,32 +84,64 @@ class CStyleFileLineCounter(FileLineCounter):
         return linec
 
 
-class PythonStyleFileLineCounter(FileLineCounter):
+class PythonStyleFileLineCounter(FileLineCounterStrategy):
     def __init__(self) -> None:
         super().__init__(one_line_com="#", multi_line_com_start=r'"""', multi_line_com_end=r'"""')
+
+    def line_count(self, path: str) -> int:
+        linec = 0
+        file = open(path, "r", encoding="utf_8")
+        for line in file:
+            line = line.strip()
+            if self.is_informal_line(line):
+                linec += 1
+        file.close()
+        return linec
+
+
+class FileLineCounter:
+    def __init__(self, strategy: FileLineCounterStrategy) -> None:
+        self._strategy = strategy
+
+    def set_strategy(self, strategy: FileLineCounterStrategy) -> None:
+        self._strategy = strategy
+
+    def count_lines(self, file_path: str) -> int:
+        return self._strategy.line_count(file_path)
 
 
 class LineCounter:
     IGNORE_LIST = ["\\.venv", "\\.git"]
 
+    counter_classes = {
+        ".py": PythonStyleFileLineCounter,
+
+    }
+
     def __init__(self, start_path: str = ".") -> None:
         self._start_path = start_path
 
     def count_lines(self) -> None:
+        table = []
         for dirpath, dirnames, filenames in os.walk(self._start_path):
             if any(ignore_dir in dirpath for ignore_dir in self.IGNORE_LIST):
                 continue
 
-            print(dirpath, dirnames, filenames)
+            # print(dirpath, dirnames, filenames)
 
             for filename in filenames:
                 path = os.path.join(dirpath, filename)
-                print(path)
-                if path.endswith(".py"):
-                    continue
-                counter = CStyleFileLineCounter()
-                linec = counter.line_count(path)
-                print(linec)
+                _, ext = os.path.splitext(path)
+
+                counter_class = self.counter_classes.get(
+                    ext, CStyleFileLineCounter)
+                counter = FileLineCounter(counter_class())
+
+                linec = counter.count_lines(path)
+                table.append([path, linec])
+        table.sort(key=lambda x: -x[1])
+        for x in table:
+            print(f"Total lines in {x[0]}: {x[1]}")
 
 
 if __name__ == "__main__":
@@ -124,7 +161,6 @@ if __name__ == "__main__":
     #     )
 
     args = parser.parse_args()
-    print(args.path)
 
     accountant = LineCounter(args.path)
     accountant.count_lines()
