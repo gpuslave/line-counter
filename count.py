@@ -153,6 +153,8 @@ class LineCounter:
         table.sort(key=lambda x: -x[1])
         for x in table:
             print(f"Total lines in {x[0]}: {x[1]}")
+        total = sum(x[1] for x in table)
+        print(f"Total amount of lines: {total} ")
 
 
 if __name__ == "__main__":
