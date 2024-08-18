@@ -111,7 +111,7 @@ class FileLineCounter:
 
 
 class LineCounter:
-    IGNORE_LIST = ["\\.venv", "\\.git"]
+    # IGNORE_LIST = ["\\.venv", "\\.git"]
 
     counter_classes = {
         ".py": PythonStyleFileLineCounter,
@@ -120,11 +120,20 @@ class LineCounter:
 
     def __init__(self, start_path: str = ".") -> None:
         self._start_path = start_path
+        self.IGNORE_DIR = []
+        self.IGNORE_EXT = []
+        projignore = open(file=r".\projignore", mode="r", encoding="utf_8")
+        for x in projignore:
+            x = x.strip()
+            if x[0] == '\\':
+                self.IGNORE_DIR.append(x)
+            else:
+                self.IGNORE_EXT.append(x)
 
     def count_lines(self) -> None:
         table = []
         for dirpath, dirnames, filenames in os.walk(self._start_path):
-            if any(ignore_dir in dirpath for ignore_dir in self.IGNORE_LIST):
+            if any(ignore_dir in dirpath for ignore_dir in self.IGNORE_DIR):
                 continue
 
             # print(dirpath, dirnames, filenames)
@@ -133,6 +142,8 @@ class LineCounter:
                 path = os.path.join(dirpath, filename)
                 _, ext = os.path.splitext(path)
 
+                if any(ignore_ext in path for ignore_ext in self.IGNORE_EXT):
+                    continue
                 counter_class = self.counter_classes.get(
                     ext, CStyleFileLineCounter)
                 counter = FileLineCounter(counter_class())
