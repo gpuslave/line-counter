@@ -1,25 +1,9 @@
 import os
 import argparse
+from abc import ABC, abstractmethod
 
 COLOUR = os.getenv("COLOUR", 1)
 
-parser = argparse.ArgumentParser(
-    description="Count the number of strings in a project")
-
-parser.add_argument("--path", "-p",
-                    metavar="ABSOLUTE_PATH",
-                    type=str,
-                    help="Absolute path to a directory",
-                    default=".",)
-
-# parser.add_argument(
-#         "--count-comments", "-c",
-#         action="store_true",
-#         help="Count lines within multi-line comments"
-#     )
-
-args = parser.parse_args()
-print(args.path)
 
 # from colorama import Fore, Back, Style
 # print(Fore.RED + 'some red telinet')
@@ -41,61 +25,34 @@ print(args.path)
 
 # print(bcolors.WARNING + "Warning: No active frommets remain. Continue?" + bcolors.ENDC)
 
-# ONE_LINE_COM = "#"
-# MULTI_LINE_COM_START = '\"\"\"'
-# MULTI_LINE_COM_END = '\"\"\"'
+class FileLineCounter:
+    def __init__(self, one_line_com: str = "//", multi_line_com_start: str = r"/*", multi_line_com_end: str = r"*/") -> None:
+        self.ONE_LINE_COM = one_line_com
+        self.MULTI_LINE_COM_START = multi_line_com_start
+        self.MULTI_LINE_COM_END = multi_line_com_end
 
-ONE_LINE_COM = "//"
-MULTI_LINE_COM_START = r'/*'
-MULTI_LINE_COM_END = r'*/'
+    def is_one_line_comment(self, line: str) -> bool:
+        return line.startswith(self.ONE_LINE_COM)
+
+    def is_informal_line(self, line: str) -> bool:
+        return line and not self.is_one_line_comment(line)
 
 
-class LineCounter:
+class CStyleFileLineCounter(FileLineCounter):
     def __init__(self) -> None:
-        pass
+        super().__init__(one_line_com="//", multi_line_com_start=r"/*", multi_line_com_end=r"*/")
 
-    def count_lines() -> None:
-        pass
-
-
-def is_one_line_comment(line: str) -> bool:
-    return line.startswith(ONE_LINE_COM)
-
-
-def is_informal_line(line: str) -> bool:
-    return line and not is_one_line_comment(line)
-
-# LineCounter.count_lines()
-
-
-start_path = args.path
-for dirpath, dirnames, filenames in os.walk(start_path):
-    if "\\.venv" in dirpath or "\\.git" in dirpath:
-        continue
-    print(dirpath, dirnames, filenames)
-    for filename in filenames:
-        path = os.path.join(dirpath, filename)
-        print(path)
-        # file = open(path, "r", encoding="utf_8")
-        if not path.endswith(".cs"):
-            continue
+    def line_count(self, path: str) -> int:
         linec = 0
         file = open(path, "r", encoding="utf_8")
         for line in file:
             line = line.strip()
-
-            # not empty string && not one line comment
-            if is_informal_line(line):
-                # listline = line.split('\"\"\"')
-                # print(listline)
-                # if multiline comment started in this
-
-                if MULTI_LINE_COM_START in line:
+            if self.is_informal_line(line):
+                if self.MULTI_LINE_COM_START in line:
                     line_accounted = False
                     que_com = 1
-                    start_split = line.split(MULTI_LINE_COM_START)
+                    start_split = line.split(self.MULTI_LINE_COM_START)
                     end_split = []
-                    print(start_split)
 
                     if start_split[0]:
                         linec += 1
@@ -104,12 +61,11 @@ for dirpath, dirnames, filenames in os.walk(start_path):
                     line = start_split[1]
 
                     while que_com != 0:
-                        # print(que_com)
-                        que_com += line.count(MULTI_LINE_COM_START)
-                        que_com -= line.count(MULTI_LINE_COM_END)
+                        que_com += line.count(self.MULTI_LINE_COM_START)
+                        que_com -= line.count(self.MULTI_LINE_COM_END)
 
                         if que_com == 0:
-                            end_split = line.split(MULTI_LINE_COM_END)
+                            end_split = line.split(self.MULTI_LINE_COM_END)
                             if end_split[-1] and not line_accounted:
                                 linec += 1
                                 line_accounted = True
@@ -117,13 +73,58 @@ for dirpath, dirnames, filenames in os.walk(start_path):
 
                         line = file.readline().strip()
                         line_accounted = False
-
-                        # if start_split
-                        # print(listline)
-                        #     listline = line.split('\"\"\"')
-                        #     # if line.find('\"\"\"'):
-                        #     #     pass
-                        #     print(listline)
                 else:
                     linec += 1
-        print(linec)
+        file.close()
+        return linec
+
+
+class PythonStyleFileLineCounter(FileLineCounter):
+    def __init__(self) -> None:
+        super().__init__(one_line_com="#", multi_line_com_start=r'"""', multi_line_com_end=r'"""')
+
+
+class LineCounter:
+    IGNORE_LIST = ["\\.venv", "\\.git"]
+
+    def __init__(self, start_path: str = ".") -> None:
+        self._start_path = start_path
+
+    def count_lines(self) -> None:
+        for dirpath, dirnames, filenames in os.walk(self._start_path):
+            if any(ignore_dir in dirpath for ignore_dir in self.IGNORE_LIST):
+                continue
+
+            print(dirpath, dirnames, filenames)
+
+            for filename in filenames:
+                path = os.path.join(dirpath, filename)
+                print(path)
+                if path.endswith(".py"):
+                    continue
+                counter = CStyleFileLineCounter()
+                linec = counter.line_count(path)
+                print(linec)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Count the number of strings in a project")
+
+    parser.add_argument("--path", "-p",
+                        metavar="ABSOLUTE_PATH",
+                        type=str,
+                        help="Absolute path to a directory",
+                        default=".",)
+
+    # parser.add_argument(
+    #         "--count-comments", "-c",
+    #         action="store_true",
+    #         help="Count lines within multi-line comments"
+    #     )
+
+    args = parser.parse_args()
+    print(args.path)
+
+    accountant = LineCounter(args.path)
+    accountant.count_lines()
